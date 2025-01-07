@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice English Tutor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Voice English Tutor</h1>
+    <button onclick="startRecognition()">Start Speaking</button>
+    <div id="chat-container"></div>
+
+    <script>
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+
+        recognition.onresult = async (event) => {
+            const userQuery = event.results[0][0].transcript;
+            addMessageToChat('You', userQuery);
+
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: userQuery }),
+                });
+
+                const data = await response.json();
+                addMessageToChat('Tutor', data.answer);
+                speakResponse(data.answer);
+            } catch (error) {
+                console.error('Error communicating with server:', error);
+                addMessageToChat('Error', 'Could not process your query.');
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+        };
+
+        function startRecognition() {
+            recognition.start();
+        }
+
+        function addMessageToChat(sender, message) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('chat-message');
+            messageElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
+            chatContainer.appendChild(messageElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function speakResponse(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            speechSynthesis.speak(utterance);
+        }
+    </script>
+</body>
+</html>
